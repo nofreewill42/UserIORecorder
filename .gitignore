@@ -1,0 +1,5 @@
+EyeTracking/
+__pycache__/
+.vscode/
+venv/
+data/
