@@ -114,16 +114,17 @@ class MouseListener:
         self.write_row(event_id, dx, dy, current_time)
 
     def start(self):
-        self.thread = threading.Thread(target=self._start_listening)
+        self.listener = Listener(on_move=self.on_move, on_click=self.on_click, on_scroll=self.on_scroll)
+        self.thread = threading.Thread(target=self.listener.start)
         self.thread.start()
 
     def _start_listening(self):
-        with Listener(on_move=self.on_move, on_click=self.on_click, on_scroll=self.on_scroll) as listener:
-            listener.join()
+        self.listener.join()
     
     def stop(self):
         print('Stopping mouse listener...')
         if self.thread is not None:
+            self.listener.stop()  # Stop the listener
             self.thread.join()  # Wait for listener thread to finish
             print('Mouse listener stopped.')
         else:

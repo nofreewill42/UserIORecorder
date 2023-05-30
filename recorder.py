@@ -30,9 +30,7 @@ if __name__ == '__main__':
         #     print('Lenght of audio:', len(audio_data))
         import time
         time.sleep(3)
-        print('Done')
         break
-    print('Done23')
     
     # Stop recording
     screen_recorder.stop()
