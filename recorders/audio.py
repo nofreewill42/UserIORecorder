@@ -89,6 +89,7 @@ class AudioRecorder:
             self.stream.close()
         self.wave_file.close
         self.audio.terminate()
+        self.thread = None
 
     def record(self):
         while self.recording:

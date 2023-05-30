@@ -6,7 +6,7 @@ thus making the user's experience more enjoyable.
 '''
 
 # Imports
-from recorders import MouseListener, AudioRecorder
+from recorders import MouseListener, AudioRecorder, ScreenRecorder
 
 
 
@@ -18,6 +18,9 @@ if __name__ == '__main__':
     audio_recorder = AudioRecorder('data/audio.wav')
     audio_recorder.start()
 
+    screen_recorder = ScreenRecorder(output_file='data/video.mp4', fps=30)
+    screen_recorder.start()  # start recording
+
     while True:
         # mouse_events = mouse_listener.fetch_events()
         # if mouse_events:
@@ -25,4 +28,13 @@ if __name__ == '__main__':
         # audio_data = audio_recorder.fetch_audio_data()
         # if audio_data:
         #     print('Lenght of audio:', len(audio_data))
-        pass
+        import time
+        time.sleep(3)
+        print('Done')
+        break
+    print('Done23')
+    
+    # Stop recording
+    screen_recorder.stop()
+    audio_recorder.stop()
+    mouse_listener.stop()

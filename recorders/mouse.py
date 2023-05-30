@@ -122,8 +122,12 @@ class MouseListener:
             listener.join()
     
     def stop(self):
+        print('Stopping mouse listener...')
         if self.thread is not None:
             self.thread.join()  # Wait for listener thread to finish
+            print('Mouse listener stopped.')
+        else:
+            print('Mouse listener not running.')
     
     def fetch_events(self):
         with self.lock:

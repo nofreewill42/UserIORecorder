@@ -35,6 +35,13 @@ from skimage.metrics import structural_similarity as ssim
 from pathlib import Path
 import pyautogui
 
+import mss
+import mss.tools
+
+
+
+
+
 class ScreenRecorder:
     def __init__(self, output_file='data/video.mp4', fps=30):
         self.output_file = Path(output_file)
@@ -56,6 +63,7 @@ class ScreenRecorder:
             return
         self.recording = False
         self.thread.join()
+        self.out.release()
         self.thread = None
 
     def fetch_frames(self):
@@ -65,26 +73,40 @@ class ScreenRecorder:
         return frames
     
     def _record(self):
+        # TODO: OpenCV with(!) FFMPEG installation to be able to use 'H264' codec isntead of 'MP4V'
         screen_width, screen_height = pyautogui.size()
-        out = cv2.VideoWriter(str(self.output_file), cv2.VideoWriter_fourcc(*'MJPG'), self.fps, (screen_width, screen_height))
+        self.out = cv2.VideoWriter(str(self.output_file), cv2.VideoWriter_fourcc(*'MP4V'), self.fps, (screen_width, screen_height))
         frame_duration = 1 / self.fps
         start_time = time.time()
         frame_count = 0
 
         while self.recording:
-            img = pyautogui.screenshot()
+            #img = pyautogui.screenshot()
+            
+
+            with mss.mss() as sct:
+                # The screen part to capture
+                region = {'top': 0, 'left': 0, 'width': screen_width, 'height': screen_height}
+
+                # Grab the data
+                img = sct.grab(region)
+
+                # # Save to the picture file
+                # mss.tools.to_png(img.rgb, img.size, output='dummy.png')
+
+
             frame = np.array(img)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert the image from BGR color space to RGB color space
             if self.last_frame is not None:
                 #score, diff = ssim(self.last_frame, frame, full=True, multichannel=True, channel_axis=2)
                 if True:#score < 0.50:  # 0.99 was by default  # Threshold for similarity
-                    out.write(frame)
+                    self.out.write(frame)
                     self.frames.append(frame)
                 else:
                     out.write(self.last_frame)
                     #self.frames.append(self.last_frame)
             else:
-                out.write(frame)
+                self.out.write(frame)
                 self.frames.append(frame)
             self.last_frame = frame
 
@@ -94,7 +116,7 @@ class ScreenRecorder:
             if sleep_time > 0:
                 time.sleep(sleep_time)  # Sleep to limit the frame rate up to fps
 
-        out.release()
+        self.out.release()
 
 if __name__ == '__main__':
     screen_recorder = ScreenRecorder(output_file='data/video.mp4', fps=30)
