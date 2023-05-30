@@ -1,25 +1,68 @@
+"""
+An AudioRecorder object is used to record audio from the system's default input audio device,
+continuously writing the recorded data to a WAV file,
+and also provide a fetch_audio_data function with which you can access
+all the audio that is built up since the previous call to this function.
+
+The class uses pyaudio to interface with the system's audio input and the wave module 
+to write the audio data to a WAV file. It employs a separate thread to record audio 
+while the rest of the program continues running.
+
+Usage:
+    recorder = AudioRecorder(output_file='data/audio.wav')
+    recorder.start()  # start recording
+
+    # do other stuff while recording...
+    
+    # fetch raw audio data (optional)
+    raw_data = recorder.fetch_audio_data()  
+
+    recorder.stop()  # stop recording
+
+Parameters:
+- output_file: path of the file where the recorded audio will be saved. 
+    Default is 'data/audio.wav'.
+- channels: number of audio channels to record. Default is 1 (mono).
+- rate: sample rate in Hz. Default is 16000.
+- chunk_size: size of audio chunks to read at a time. Default is 1024. Smaller values 
+    may result in smoother audio, but too small values can cause performance issues.
+
+Methods:
+- start(): Start recording audio.
+- stop(): Stop recording audio.
+- fetch_audio_data(): Returns the raw audio data recorded since the last call to this method 
+    and clears the internal buffer. This can be useful if you want to process the audio data 
+    while you're recording. The data is returned as a bytes object.
+
+Example:
+    At the bottom of this file is a simple example of how to use this class.
+"""
+
 import atexit
 import pyaudio
 import threading
+import wave
 
 from pathlib import Path
 
 
 class AudioRecorder:
-    def __init__(self, output_file='data/audio.aac', channels=1, rate=44100, chunk_size=1024):
+    def __init__(self, output_file='data/audio.wav', channels=1, sample_rate=16000, chunk_size=1024):
         self.CHUNK = chunk_size
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = channels
-        self.RATE = rate
+        self.SAMPLERATE = sample_rate
 
         self.audio = pyaudio.PyAudio()
         self.stream = None
 
         self.frames = []
         self.output_file = Path(output_file)
-        self.temp_file = self.output_file.with_suffix('.wav')
-        self.bin_file = self.temp_file.open('wb')
-        atexit.register(self.bin_file.close)
+        self.wave_file = wave.open(output_file, 'wb')
+        self.wave_file.setnchannels(self.CHANNELS)
+        self.wave_file.setsampwidth(self.audio.get_sample_size(self.FORMAT))
+        self.wave_file.setframerate(self.SAMPLERATE)
+        atexit.register(self.stop)
 
         self.recording = False
         self.thread = None
@@ -28,7 +71,7 @@ class AudioRecorder:
         if self.stream is None:
             self.stream = self.audio.open(format=self.FORMAT,
                                           channels=self.CHANNELS,
-                                          rate=self.RATE,
+                                          rate=self.SAMPLERATE,
                                           input=True,
                                           frames_per_buffer=self.CHUNK)
         self.stream.start_stream()
@@ -41,42 +84,43 @@ class AudioRecorder:
         self.recording = False
         if self.thread is not None:
             self.thread.join()  # Wait for recording thread to finish
-        self.stream.stop_stream()
-        self.stream.close()
+        if self.stream is not None:
+            self.stream.stop_stream()
+            self.stream.close()
+        self.wave_file.close
+        self.audio.terminate()
 
     def record(self):
         while self.recording:
-            data = self.stream.read(self.CHUNK)
-            self.frames.append(data)
-            self.bin_file.write(data)
+            if self.stream is not None:
+                data = self.stream.read(self.CHUNK)
+                self.frames.append(data)
+                self.wave_file.writeframes(data)
 
     def fetch_audio_data(self):
         audio_data = b''.join(self.frames)
         self.frames = []
         return audio_data
 
-    def __del__(self):
-        self.stop()
-        self.audio.terminate()
 
 
+if __name__ == '__main__':
+    audio_recorder = AudioRecorder()
+    audio_recorder.start()  # start recording
 
+    # record for a while...
+    import time
+    time.sleep(5)
 
-recorder = AudioRecorder()
-recorder.start()  # start recording
+    # fetch audio data for processing
+    data = audio_recorder.fetch_audio_data()
+    print(len(data))
 
+    # continue recording...
+    time.sleep(3)
 
-# record for a while...
-import time
-time.sleep(5)
+    # fetch more audio data for processing
+    data = audio_recorder.fetch_audio_data()
+    print(len(data))
 
-# fetch audio data
-data = recorder.fetch_audio_data()
-
-# continue recording...
-time.sleep(15)
-
-# fetch more audio data
-more_data = recorder.fetch_audio_data()
-
-recorder.stop()  # stop recording
+    audio_recorder.stop()  # stop recording
