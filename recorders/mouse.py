@@ -36,6 +36,9 @@ Mouse events are recorded as follows:
 - x and y (2 bytes each): The x and y coordinates of the mouse pointer for movement and click events.
     For scroll events, these are the x and y distances scrolled.
 - time (8 bytes): The time at which the event occurred, as returned by time.time().
+
+Example:
+    At the bottom of this file is a simple example of how to use this class.
 """
 
 
