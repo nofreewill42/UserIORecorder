@@ -18,8 +18,11 @@ if __name__ == '__main__':
     audio_recorder = AudioRecorder('data/audio.wav')
     audio_recorder.start()
 
-    screen_recorder = ScreenRecorder(output_file='data/video.mp4', fps=30)
+    screen_recorder = ScreenRecorder(output_file='data/video.mp4', fps=30, downscale_factor=4)
     screen_recorder.start()  # start recording
+
+    #mouseview_recorder = ScreenRecorder(output_file='data/video.mp4', fps=30, downscale_factor=4)
+    #mouseview_recorder.start()  # start recording
 
     while True:
         # mouse_events = mouse_listener.fetch_events()

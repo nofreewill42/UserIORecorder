@@ -43,13 +43,14 @@ import mss.tools
 
 
 class ScreenRecorder:
-    def __init__(self, output_file='data/video.mp4', fps=30):
+    def __init__(self, output_file='data/video.mp4', fps=30, downscale_factor=1):
         self.output_file = Path(output_file)
         self.fps = fps
         self.recording = False
         self.frames = []  # Queue for video frames
         self.thread = None
         self.last_frame = None
+        self.downscale_factor = downscale_factor  # Downscale the image to reduce the size of the video
 
     def start(self):
         if self.recording:
@@ -75,7 +76,7 @@ class ScreenRecorder:
     def _record(self):
         # TODO: OpenCV with(!) FFMPEG installation to be able to use 'H264' codec isntead of 'MP4V'
         screen_width, screen_height = pyautogui.size()
-        self.out = cv2.VideoWriter(str(self.output_file), cv2.VideoWriter_fourcc(*'MP4V'), self.fps, (screen_width, screen_height))
+        self.out = cv2.VideoWriter(str(self.output_file), cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (screen_width//self.downscale_factor, screen_height//self.downscale_factor))
         frame_duration = 1 / self.fps
         start_time = time.time()
         frame_count = 0
@@ -97,6 +98,7 @@ class ScreenRecorder:
 
             frame = np.array(img)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert the image from BGR color space to RGB color space
+            frame = cv2.resize(frame, (screen_width//self.downscale_factor, screen_height//self.downscale_factor))  # Downscale the image to reduce the size of the video
             if self.last_frame is not None:
                 #score, diff = ssim(self.last_frame, frame, full=True, multichannel=True, channel_axis=2)
                 if True:#score < 0.50:  # 0.99 was by default  # Threshold for similarity

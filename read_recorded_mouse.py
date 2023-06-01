@@ -25,7 +25,6 @@ for i in range(num_records):
     xs.append(x)
     ys.append(y)
     times.append(time)
-    print(event_id, x, y, time)
 event_ids_np = np.array(event_ids)
 xs_np = np.array(xs)
 ys_np = np.array(ys)
