@@ -1,42 +1,36 @@
 # read_recorded_keyboard.py
-import struct
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-
 from pathlib import Path
+import pandas as pd
 
 def read_keyboard_events(data_dir='data', timestamp='latest'):
-    format = 'bid'
-    bin_file = f'{data_dir}/{timestamp}/keyboard_events.bin' if timestamp != 'latest' else sorted(Path(data_dir).iterdir())[-1] / 'keyboard_events.bin'
+    csv_file = f'{data_dir}/{timestamp}/keyboard_events.csv' if timestamp != 'latest' else sorted(Path(data_dir).iterdir())[-1] / 'keyboard_events.csv'
 
     # load the data
-    record_size = struct.calcsize(format)
-    binary_data = Path(bin_file).read_bytes()
-    num_records = len(binary_data)//record_size
-    num_bytes = num_records*record_size
-    binary_data = binary_data[:num_bytes]  # remove last incomplete record if there is one, for example when the program was terminated while recording
+    data = pd.read_csv(csv_file)
 
-    # convert the data to a numpy array
-    event_ids = []
-    keys = []
-    times = []
-    for i in range(num_records):
-        record = binary_data[i*record_size:(i+1)*record_size]
-        event_id, key, time = struct.unpack(format, record)
-        event_ids.append(event_id)
-        keys.append(key)
-        times.append(time)
-    event_ids_np = np.array(event_ids)
-    keys_np = np.array(keys)
-    times_np = np.array(times)
+    event_ids = data['event'].to_numpy()
+    keys = data['key'].to_numpy()
+    times = data['time'].to_numpy()
+
+    # Make the time column relative to the first timestamp
+    times = times - times[0]
+
+    # convert key names to a consistent format
+    keys = np.array([key.lower() for key in keys])
 
     # plot the data
     fig, ax = plt.subplots()
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Key Code")
+    ax.set_xlim(0, times[-1])
+    ax.set_ylim(0, len(set(keys)))
 
-    plt.scatter(times_np, keys_np, c=event_ids_np, cmap='viridis', alpha=0.5)
+    scatter = ax.scatter(times, [list(set(keys)).index(k) for k in keys], c=event_ids, cmap='viridis', alpha=0.5)
+
+    # add annotations
+    for i, txt in enumerate(keys):
+        ax.annotate(txt, (times[i], list(set(keys)).index(keys[i])))
+
     plt.show()
 
 if __name__ == '__main__':

@@ -1,57 +1,53 @@
 import time
 import atexit
 import threading
-import struct
-from pynput.keyboard import Controller, Listener, Key
+import csv
+import pyxhook
 
 class KeyboardListener:
-    def __init__(self, bin_file='data/keyboard_events.bin'):
-        self.keyboard = Controller()
+    def __init__(self, csv_file='data/keyboard_events.csv'):
+        self.keyboard = pyxhook.HookManager()
         self.start_time = time.time()
 
-        self.bin_file = open(bin_file, 'wb', 0)
-        atexit.register(self.bin_file.close)
-
-        self.event2id = {'press':0,
-                         'release':1}
+        self.csv_file = open(csv_file, 'w', newline='', buffering=1)
+        self.writer = csv.writer(self.csv_file)
+        self.writer.writerow(['event', 'key', 'time'])  # write header
+        atexit.register(self.csv_file.close)
 
         self.events = []
         self.lock = threading.Lock()
+        self.pressed_keys = set()
 
-    def write_row(self, event_id, key, time):
-        # key codes are generally up to 2 bytes in size
-        binary_data = struct.pack('bid', event_id, key.value.vk, time)
-        self.bin_file.write(binary_data)
-        self.events.append(binary_data)
+    def write_row(self, event, key_name, time):
+        row = [event, key_name, time]
+        self.writer.writerow(row)
+        self.events.append(row)
 
     def get_time(self):
         return time.time()
 
-    def on_press(self, key):
+    def on_press(self, event):
         current_time = self.get_time()
-        event_id = self.event2id['press']
-        try:
-            self.write_row(event_id, key, current_time)
-        except AttributeError:
-            pass  # Non-standard key pressed
+        if event.Key in self.pressed_keys:
+            return
+        self.pressed_keys.add(event.Key)
+        self.write_row(0, event.Key, current_time)
 
-    def on_release(self, key):
+    def on_release(self, event):
         current_time = self.get_time()
-        event_id = self.event2id['release']
-        try:
-            self.write_row(event_id, key, current_time)
-        except AttributeError:
-            pass  # Non-standard key released
+        self.pressed_keys.discard(event.Key)
+        self.write_row(1, event.Key, current_time)
 
     def start(self):
-        self.listener = Listener(on_press=self.on_press, on_release=self.on_release)
-        self.thread = threading.Thread(target=self.listener.start)
+        self.keyboard.KeyDown = self.on_press
+        self.keyboard.KeyUp = self.on_release
+        self.thread = threading.Thread(target=self.keyboard.start)
         self.thread.start()
 
     def stop(self):
         print('Stopping keyboard listener...')
         if self.thread is not None:
-            self.listener.stop()
+            self.keyboard.cancel()
             self.thread.join()
             print('Keyboard listener stopped.')
         else:
@@ -59,6 +55,6 @@ class KeyboardListener:
 
     def fetch_events(self):
         with self.lock:
-            events_data = b''.join(self.events)
-            self.events = []
-        return events_data
+            events_copy = self.events.copy()
+            self.events.clear()
+        return events_copy

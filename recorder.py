@@ -38,9 +38,9 @@ if __name__ == '__main__':
     mouse_listener = MouseListener(delta_time=0.03, bin_file=f'{data_dir}/mouse_events.bin')
     mouse_listener.start()
 
-    keyboard_listener = KeyboardListener(bin_file=f'{data_dir}/keyboard_events.bin')  # Add this line
+    keyboard_listener = KeyboardListener(csv_file=f'{data_dir}/keyboard_events.csv')  # Add this line
     keyboard_listener.start()  # Start keyboard listener
-    
+
     audio_recorder = AudioRecorder(f'{data_dir}/audio.wav')
     audio_recorder.start()
 
