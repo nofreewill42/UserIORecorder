@@ -8,7 +8,24 @@ thus making the user's experience more enjoyable.
 # Imports
 import os
 import time
-from recorders import MouseListener, AudioRecorder, ScreenRecorder
+from recorders import MouseListener, AudioRecorder, ScreenRecorder, KeyboardListener
+
+import signal
+import sys
+import time
+
+def signal_handler(sig, frame):
+    print('You pressed Ctrl+C!')
+    # Call cleanup functions here
+    # Stop recording
+    mouseview_recorder.stop()
+    screen_recorder.stop()
+    audio_recorder.stop()
+    mouse_listener.stop()
+    keyboard_listener.stop()
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 
 if __name__ == '__main__':
@@ -20,6 +37,9 @@ if __name__ == '__main__':
 
     mouse_listener = MouseListener(delta_time=0.03, bin_file=f'{data_dir}/mouse_events.bin')
     mouse_listener.start()
+
+    keyboard_listener = KeyboardListener(bin_file=f'{data_dir}/keyboard_events.bin')  # Add this line
+    keyboard_listener.start()  # Start keyboard listener
     
     audio_recorder = AudioRecorder(f'{data_dir}/audio.wav')
     audio_recorder.start()
@@ -29,23 +49,6 @@ if __name__ == '__main__':
 
     mouseview_recorder = ScreenRecorder(output_file=f'{data_dir}/mouseview.mp4', fps=10, downscale_factor=2, capture_radius=(100,40))
     mouseview_recorder.start()  # start recording
-
-
-    import signal
-    import sys
-    import time
-
-    def signal_handler(sig, frame):
-        print('You pressed Ctrl+C!')
-        # Stop recording
-        mouseview_recorder.stop()
-        screen_recorder.stop()
-        audio_recorder.stop()
-        mouse_listener.stop()
-        # Call cleanup functions here
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, signal_handler)
 
     while True:
         # mouse_events = mouse_listener.fetch_events()
@@ -64,3 +67,4 @@ if __name__ == '__main__':
     screen_recorder.stop()
     audio_recorder.stop()
     mouse_listener.stop()
+    keyboard_listener.stop()

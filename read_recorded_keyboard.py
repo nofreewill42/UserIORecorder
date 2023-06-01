@@ -1,4 +1,4 @@
-# read_recorded_mouse.py
+# read_recorded_keyboard.py
 import struct
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,9 +6,9 @@ from matplotlib.animation import FuncAnimation
 
 from pathlib import Path
 
-def read_mouse_events(data_dir='data', timestamp='latest'):
-    format = 'bhhd'
-    bin_file = f'{data_dir}/{timestamp}/mouse_events.bin' if timestamp != 'latest' else sorted(Path(data_dir).iterdir())[-1] / 'mouse_events.bin'
+def read_keyboard_events(data_dir='data', timestamp='latest'):
+    format = 'bid'
+    bin_file = f'{data_dir}/{timestamp}/keyboard_events.bin' if timestamp != 'latest' else sorted(Path(data_dir).iterdir())[-1] / 'keyboard_events.bin'
 
     # load the data
     record_size = struct.calcsize(format)
@@ -19,27 +19,25 @@ def read_mouse_events(data_dir='data', timestamp='latest'):
 
     # convert the data to a numpy array
     event_ids = []
-    xs, ys = [], []
+    keys = []
     times = []
     for i in range(num_records):
         record = binary_data[i*record_size:(i+1)*record_size]
-        event_id, x, y, time = struct.unpack(format, record)
+        event_id, key, time = struct.unpack(format, record)
         event_ids.append(event_id)
-        xs.append(x)
-        ys.append(y)
+        keys.append(key)
         times.append(time)
     event_ids_np = np.array(event_ids)
-    xs_np = np.array(xs)
-    ys_np = np.array(ys)
+    keys_np = np.array(keys)
     times_np = np.array(times)
 
     # plot the data
     fig, ax = plt.subplots()
-    ax.set_xlim(0, 1920*2)
-    ax.set_ylim(0, 1080)
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Key Code")
 
-    plt.scatter(xs_np, ys_np, c=times_np, cmap='viridis', alpha=0.5)
+    plt.scatter(times_np, keys_np, c=event_ids_np, cmap='viridis', alpha=0.5)
     plt.show()
 
 if __name__ == '__main__':
-    read_mouse_events()
+    read_keyboard_events()
