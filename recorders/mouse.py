@@ -50,14 +50,14 @@ from pynput.mouse import Controller, Listener
 
 
 class MouseListener:
-    def __init__(self, delta_time=None):
+    def __init__(self, delta_time=None, bin_file='data/mouse_events.bin'):
         self.mouse = Controller()
         self.prev_position = self.mouse.position
         self.delta_time = delta_time
         self.start_time = time.time()
         self.prev_time = self.start_time  # used to check if the mouse has moved more than delta_time
 
-        self.bin_file = open('data/mouse_events.bin', 'wb', 0)
+        self.bin_file = open(bin_file, 'wb', 0)
         atexit.register(self.bin_file.close)  # make sure the file is being closed when the program exits
 
         self.event2id = {'move':0,

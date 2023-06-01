@@ -38,12 +38,12 @@ import pyautogui
 import mss
 import mss.tools
 
-
+from pynput.mouse import Controller as MouseController
 
 
 
 class ScreenRecorder:
-    def __init__(self, output_file='data/video.mp4', fps=30, downscale_factor=1):
+    def __init__(self, output_file='data/video.mp4', fps=30, downscale_factor=1,capture_radius=(5000,3000)):
         self.output_file = Path(output_file)
         self.fps = fps
         self.recording = False
@@ -51,6 +51,8 @@ class ScreenRecorder:
         self.thread = None
         self.last_frame = None
         self.downscale_factor = downscale_factor  # Downscale the image to reduce the size of the video
+        self.capture_radius = capture_radius
+        self.mouse = MouseController()
 
     def start(self):
         if self.recording:
@@ -75,19 +77,32 @@ class ScreenRecorder:
     
     def _record(self):
         # TODO: OpenCV with(!) FFMPEG installation to be able to use 'H264' codec isntead of 'MP4V'
+        capture_radius_x, capture_radius_y = self.capture_radius
         screen_width, screen_height = pyautogui.size()
-        self.out = cv2.VideoWriter(str(self.output_file), cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (screen_width//self.downscale_factor, screen_height//self.downscale_factor))
+        capture_width, capture_height = min(screen_width, capture_radius_x*2), min(screen_height, capture_radius_y*2)
+        self.out = cv2.VideoWriter(str(self.output_file), cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (capture_width//self.downscale_factor, capture_height//self.downscale_factor))
         frame_duration = 1 / self.fps
         start_time = time.time()
         frame_count = 0
 
         while self.recording:
             #img = pyautogui.screenshot()
-            
+            # Get the mouse's current position
+            mouse_x, mouse_y = self.mouse.position
+
+            # Calculate the region to capture
+            center_x = min(screen_width-capture_radius_x, max(capture_radius_x, mouse_x))
+            center_y = min(screen_height-capture_radius_y, max(capture_radius_y, mouse_y))
+            left = max(0, center_x - capture_radius_x)
+            top = max(0, center_y - capture_radius_y)
+            right = min(screen_width, center_x + capture_radius_x)
+            bottom = min(screen_height, center_y + capture_radius_y)
+            width = right - left
+            height = bottom - top
 
             with mss.mss() as sct:
                 # The screen part to capture
-                region = {'top': 0, 'left': 0, 'width': screen_width, 'height': screen_height}
+                region = {'top': top, 'left': left, 'width': width, 'height': height}
 
                 # Grab the data
                 img = sct.grab(region)
@@ -98,7 +113,7 @@ class ScreenRecorder:
 
             frame = np.array(img)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert the image from BGR color space to RGB color space
-            frame = cv2.resize(frame, (screen_width//self.downscale_factor, screen_height//self.downscale_factor))  # Downscale the image to reduce the size of the video
+            frame = cv2.resize(frame, (width//self.downscale_factor, height//self.downscale_factor))  # Downscale the image to reduce the size of the video
             if self.last_frame is not None:
                 #score, diff = ssim(self.last_frame, frame, full=True, multichannel=True, channel_axis=2)
                 if True:#score < 0.50:  # 0.99 was by default  # Threshold for similarity
@@ -119,6 +134,9 @@ class ScreenRecorder:
                 time.sleep(sleep_time)  # Sleep to limit the frame rate up to fps
 
         self.out.release()
+    
+    def __del__(self):
+        self.stop()
 
 if __name__ == '__main__':
     screen_recorder = ScreenRecorder(output_file='data/video.mp4', fps=30)
