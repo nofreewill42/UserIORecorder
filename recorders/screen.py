@@ -43,16 +43,22 @@ from pynput.mouse import Controller as MouseController
 
 
 class ScreenRecorder:
-    def __init__(self, output_file='data/video.mp4', fps=30, downscale_factor=1,capture_radius=(5000,3000)):
+    def __init__(self, output_file='data/screen.mp4', fps=30, downscale_factor=1,capture_radius=(5000,3000), memory_limit=100):
         self.output_file = Path(output_file)
         self.fps = fps
         self.recording = False
-        self.frames = []  # Queue for video frames
+        self.frames = []  # Queue for storing the screen frames
+        self.memory_limit = memory_limit
         self.thread = None
         self.last_frame = None
-        self.downscale_factor = downscale_factor  # Downscale the image to reduce the size of the video
+        self.downscale_factor = downscale_factor  # Downscale the image to reduce the size of the output video
         self.capture_radius = capture_radius
         self.mouse = MouseController()
+
+        # Timestamps of the frames
+        csv_path = Path(self.output_file).with_suffix('.csv')
+        self.csv_path = csv_path.parent / f'{csv_path.stem}_timestamps.csv'
+        self.csv_path.write_text('frame_number,timestamp\n')
 
     def start(self):
         if self.recording:
@@ -103,22 +109,22 @@ class ScreenRecorder:
             with mss.mss() as sct:
                 # The screen part to capture
                 region = {'top': top, 'left': left, 'width': width, 'height': height}
-
                 # Grab the data
                 img = sct.grab(region)
+            
+            # Add timestamp to the csv file
+            with self.csv_path.open('a') as f:
+                f.write(f"{frame_count},{time.time()}\n")
 
-                # # Save to the picture file
-                # mss.tools.to_png(img.rgb, img.size, output='dummy.png')
 
-
-            frame = np.array(img)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert the image from BGR color space to RGB color space
+            frame = np.array(img)[:,:,:3]
             frame = cv2.resize(frame, (width//self.downscale_factor, height//self.downscale_factor))  # Downscale the image to reduce the size of the video
             if self.last_frame is not None:
                 #score, diff = ssim(self.last_frame, frame, full=True, multichannel=True, channel_axis=2)
                 if True:#score < 0.50:  # 0.99 was by default  # Threshold for similarity
                     self.out.write(frame)
                     self.frames.append(frame)
+                    self.frames = self.frames[-self.memory_limit:]  # Remove old frames to limit memory usage
                 else:
                     out.write(self.last_frame)
                     #self.frames.append(self.last_frame)

@@ -5,7 +5,7 @@ import csv
 import pyxhook
 
 class KeyboardListener:
-    def __init__(self, csv_file='data/keyboard_events.csv'):
+    def __init__(self, csv_file='data/keyboard_events.csv', memory_limit=100):
         self.keyboard = pyxhook.HookManager()
         self.start_time = time.time()
 
@@ -15,6 +15,7 @@ class KeyboardListener:
         atexit.register(self.csv_file.close)
 
         self.events = []
+        self.memory_limit = memory_limit
         self.lock = threading.Lock()
         self.pressed_keys = set()
 
@@ -22,6 +23,7 @@ class KeyboardListener:
         row = [event, key_name, time]
         self.writer.writerow(row)
         self.events.append(row)
+        self.events = self.events[-self.memory_limit:]
 
     def get_time(self):
         return time.time()

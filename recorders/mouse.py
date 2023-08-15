@@ -31,7 +31,7 @@ Methods:
 Mouse events are recorded as follows:
 - Event ID (1 byte):
     0 for movement,
-    1 for left button press, 2 for left button release, 3 for right button press, 4 for right button release,
+    1,2,3,4: 1 for left button press, 2 for left button release, 3 for right button press, 4 for right button release,
     5 for scroll event.
 - x and y (2 bytes each): The x and y coordinates of the mouse pointer for movement and click events.
     For scroll events, these are the x and y distances scrolled.
@@ -46,11 +46,11 @@ import atexit
 import struct
 import time
 import threading
-from pynput.mouse import Controller, Listener
+from pynput.mouse import Controller, Listener, Button
 
 
 class MouseListener:
-    def __init__(self, delta_time=None, bin_file='data/mouse_events.bin'):
+    def __init__(self, delta_time=None, bin_file='data/mouse_events.bin', memory_limit=100):
         self.mouse = Controller()
         self.prev_position = self.mouse.position
         self.delta_time = delta_time
@@ -68,12 +68,14 @@ class MouseListener:
                          'scroll':5}
 
         self.events = []  # store the events
+        self.memory_limit = memory_limit
         self.lock = threading.Lock()  # for thread-safe operations
 
     def write_row(self, event_id, x, y, time):
         binary_data = struct.pack('bhhd', event_id, x, y, time)  # b: byte, h: short, d: double; for unsigned use B, H
         self.bin_file.write(binary_data)
         self.events.append(binary_data)
+        self.events = self.events[-self.memory_limit:]
 
     def get_time(self):
         return time.time() # - self.start_time
@@ -117,9 +119,6 @@ class MouseListener:
         self.listener = Listener(on_move=self.on_move, on_click=self.on_click, on_scroll=self.on_scroll)
         self.thread = threading.Thread(target=self.listener.start)
         self.thread.start()
-
-    def _start_listening(self):
-        self.listener.join()
     
     def stop(self):
         print('Stopping mouse listener...')
@@ -135,25 +134,49 @@ class MouseListener:
             events_data = b''.join(self.events)
             self.events = []
         return events_data
+    
+    def execute_event(self, event_id, x, y):
+        """
+        Execute the given event.
+
+        Parameters:
+        - event_id: ID of the event to execute. Possible values are:
+            0 for movement,
+            1 for left button press, 2 for left button release, 
+            3 for right button press, 4 for right button release,
+            5 for scroll event.
+        - x and y: For movement and click events, these are the x and y coordinates to move the mouse pointer to.
+            For scroll events, these are the x and y distances to scroll.
+        """
+        if event_id == self.event2id['move']:
+            self.mouse.position = (x, y)
+        elif event_id in [self.event2id['click_left_press'], self.event2id['click_left_release']]:
+            self.mouse.click(Button.left, 1)
+        elif event_id in [self.event2id['click_right_press'], self.event2id['click_right_release']]:
+            self.mouse.click(Button.right, 1)
+        elif event_id == self.event2id['scroll']:
+            self.mouse.scroll(x, y)
+        else:
+            raise ValueError('Unknown event ID: {}'.format(event_id))
 
 
 if __name__ == '__main__':
     mouse_listener = MouseListener(delta_time=0.1)
     mouse_listener.start()  # start listening
 
-    # listen for a while...
-    import time
-    time.sleep(5)
+    # make the mouse perform certain actions
+    time.sleep(0.2)
+    mouse_listener.execute_event(0, 100, 100)  # move the mouse to (100, 100)
+    time.sleep(0.2)
+    mouse_listener.execute_event(2, 0, 0)  # left click
+    time.sleep(0.2)
+    mouse_listener.execute_event(5, 0, 2)  # scroll up
+    time.sleep(0.2)
 
     # fetch mouse event data for processing
     data = mouse_listener.fetch_events()
     print(len(data))
-
-    # continue listening...
-    time.sleep(3)
-
-    # fetch more mouse event data for processing
-    data = mouse_listener.fetch_events()
-    print(len(data))
+    print(data)
 
     mouse_listener.stop()  # stop listening
+

@@ -42,12 +42,13 @@ import atexit
 import pyaudio
 import threading
 import wave
+import time
 
 from pathlib import Path
 
 
-class AudioRecorder:
-    def __init__(self, output_file='data/audio.wav', channels=1, sample_rate=16000, chunk_size=1024):
+class MircophoneRecorder:
+    def __init__(self, output_file='data/microphone.wav', channels=1, sample_rate=16000, chunk_size=1024, memory_limit=100):
         self.CHUNK = chunk_size
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = channels
@@ -57,6 +58,7 @@ class AudioRecorder:
         self.stream = None
 
         self.frames = []
+        self.memory_limit = memory_limit
         self.output_file = Path(output_file)
         self.wave_file = wave.open(output_file, 'wb')
         self.wave_file.setnchannels(self.CHANNELS)
@@ -66,6 +68,7 @@ class AudioRecorder:
 
         self.recording = False
         self.thread = None
+        self.last_timestamp = time.time()
 
     def start(self):
         if self.stream is None:
@@ -90,13 +93,17 @@ class AudioRecorder:
         self.wave_file.close
         self.audio.terminate()
         self.thread = None
+        output_path = Path(self.output_file)
+        output_path.with_name(output_path.stem + '_timestamp.txt').write_text(str(self.last_timestamp))
 
     def record(self):
         while self.recording:
             if self.stream is not None:
                 data = self.stream.read(self.CHUNK)
+                self.last_timestamp = time.time()
                 self.frames.append(data)
                 self.wave_file.writeframes(data)
+                self.frames = self.frames[-self.memory_limit:]
 
     def fetch_audio_data(self):
         audio_data = b''.join(self.frames)
@@ -106,7 +113,7 @@ class AudioRecorder:
 
 
 if __name__ == '__main__':
-    audio_recorder = AudioRecorder()
+    audio_recorder = MircophoneRecorder()
     audio_recorder.start()  # start recording
 
     # record for a while...
