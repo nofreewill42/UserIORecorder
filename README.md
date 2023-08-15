@@ -4,6 +4,10 @@ The easier one can make themselves understood, the more he will reach out for he
 This repo is for recording user input-output;
 for the purpose of training/fine-tuning NNs to guess what the user wants: and make that happen.
 
+## RUN
+
+./startup.sh
+
 
 ## TODO:
 
