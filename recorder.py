@@ -8,11 +8,13 @@ thus making the user's experience more enjoyable.
 # Imports
 import os
 import time
+import numpy as np
 from recorders import MouseListener, MircophoneRecorder, SpeakerRecorder, ScreenRecorder, KeyboardListener, WebcamRecorder
 
 import signal
 import sys
 import time
+import socketio
 
 import subprocess
 
@@ -31,6 +33,23 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signal_handler)
+
+
+def create_socket_io(url, handle):
+    sio = socketio.Client()
+    try:
+        sio.connect(url)
+        sio.on('audio_results', handle)
+        return sio
+    except Exception as e:
+        print(f'Error connecting to {url}: {e}')
+        return None
+
+
+def handle_audio_results(data):
+    # Process the results received from the server
+    print("Received audio results:", np.array(data).shape)
+
 
 
 if __name__ == '__main__':
@@ -65,17 +84,25 @@ if __name__ == '__main__':
     # mouseview_recorder = ScreenRecorder(output_file=f'{data_dir}/mouseview.mp4', fps=10, downscale_factor=2, capture_radius=(100,40))
     # mouseview_recorder.start()  # start recording
 
+    audio_url = 'http://127.0.0.1:5000'
+    audio_sio = create_socket_io(audio_url, handle_audio_results)
+
     while True:
-        # mouse_events = mouse_listener.fetch_events()
-        # if mouse_events:
-        #     print('#Mouse events:', len(mouse_events))
-        # audio_data = audio_recorder.fetch_audio_data()
-        # if audio_data:
-        #     print('Lenght of audio:', len(audio_data))
-        # import time
-        # time.sleep(30)
-        # break
-        time.sleep(0.1)
+        time.sleep(0.2)
+
+        if audio_sio is not None:
+            # Fetch raw audio data
+            raw_audio = microphone_recorder.fetch_audio_data()
+            if raw_audio:
+                # Send raw audio data to the server
+                try:
+                    audio_sio.emit('audio_chunk', raw_audio)
+                except Exception as e:
+                    print(f'Error sending audio chunk: {e}')
+                    audio_sio = None
+        elif int(time.time()) % 4 == 0:
+            audio_sio = create_socket_io(audio_url, handle_audio_results)
+
         pass
     
     # Stop recording
@@ -87,3 +114,5 @@ if __name__ == '__main__':
     keyboard_listener.stop()
     # speaker_recorder.stop()
     #mouseview_recorder.stop()
+
+    sio.disconnect()

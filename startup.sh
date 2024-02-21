@@ -3,7 +3,8 @@
 pactl load-module module-loopback latency_msec=1
 
 # Activate your Python virtual environment
-source venv/bin/activate
+#conda deactivate
+#source venv/bin/activate
 
 # Start your Python script
 python recorder.py
