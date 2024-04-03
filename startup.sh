@@ -7,6 +7,8 @@ pactl load-module module-loopback latency_msec=1
 #source venv/bin/activate
 
 # Start your Python script
+#python recorder_allinone.py
+#python recorder_copy2.py
 python recorder.py
 
 # Stop pulseaudio loopback

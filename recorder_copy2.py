@@ -55,6 +55,12 @@ def handle_audio_results(data):
 if __name__ == '__main__':
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     data_dir = f'data/{timestamp}'
+    # Assistant - START
+    conversational_training_data_dir = f'conversational_training_data'
+    conversational_training_data_text_path = f'{conversational_training_data_dir}/{timestamp}.txt'
+    os.makedirs(conversational_training_data_dir, exist_ok=True)
+    conversational_training_data_file = open(conversational_training_data_text_path, "w", buffering=1)
+    # Assistant - END
 
     # Create a new directory for this interaction
     os.makedirs(data_dir, exist_ok=True)
@@ -84,10 +90,30 @@ if __name__ == '__main__':
     # mouseview_recorder = ScreenRecorder(output_file=f'{data_dir}/mouseview.mp4', fps=10, downscale_factor=2, capture_radius=(100,40))
     # mouseview_recorder.start()  # start recording
 
+    # Assistant - START
+
+    # Assistant - END
+
+    # connect to 127.0.0.1:65432
+    import socket
+    HOST = '127.0.0.1'
+    PORT = 65432
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((HOST, PORT))
+    print(f"Connected to {HOST}:{PORT}")
 
     while True:
         time.sleep(0.2)
 
+        # Fetch raw audio data
+        raw_audio = microphone_recorder.fetch_audio_data()
+        if raw_audio:
+            # Send the raw audio data to the server
+            client_socket.sendall(raw_audio)
+            #print(None)
+        else:
+            print("No audio data")
+    
     # Stop recording
     screen_recorder.stop()
     webcam_recorder_0.stop()

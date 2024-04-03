@@ -4,3 +4,5 @@ __pycache__/
 .vscode/
 venv/
 data/
+conversational_training_data/
+speaker-output-audio-data/
